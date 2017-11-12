@@ -569,8 +569,7 @@ int main (int argc, char **argv) {
 			/* FALLTHRU */
 		case 'P':
 		case 'C':
-//			***** REMOVED *****
-			fprintf(stderr, "-o option disabled\n");
+			mode = opt;
 			break;
 		case 't':
 			rd_kafka_topic_partition_list_add(topics, optarg,
@@ -693,6 +692,17 @@ int main (int argc, char **argv) {
 			fprintf(stderr, "-A option disabled\n");
 			break;
 
+        case 'O':
+			if (rd_kafka_topic_conf_set(topic_conf,
+										"produce.offset.report",
+										"true",
+										errstr, sizeof(errstr)) !=
+				RD_KAFKA_CONF_OK) {
+					fprintf(stderr, "%% %s\n", errstr);
+					exit(1);
+			}
+			report_offset = 1;
+			break;
 		case 'M':
 			incremental_mode = 1;
 			break;
@@ -717,8 +727,11 @@ int main (int argc, char **argv) {
 			"\n"
 			"librdkafka version %s (0x%08x)\n"
 			"\n"
-			" Options:\n"
-			"  -C | -P |    Consumer or Producer mode\n"
+			" Options: \n"
+				"\n"
+				"  WARN:  [removed*]\n"
+				"\n"
+			"  -C* | -P |   Consumer* or Producer mode\n"
 			"  -G <groupid> High-level Kafka Consumer mode\n"
 			"  -t <topic>   Topic to consume / produce\n"
 			"  -p <num>     Partition (defaults to random). "
@@ -732,39 +745,39 @@ int main (int argc, char **argv) {
 			"  -D           Copy/Duplicate data buffer (producer)\n"
 			"  -i <ms>      Display interval\n"
 			"  -m <msg>     Message payload pattern\n"
-			"  -S <start>   Send a sequence number starting at "
+			"  -S* <start>   Send a sequence number starting at "
 			"<start> as payload\n"
 			"  -R <seed>    Random seed value (defaults to time)\n"
 			"  -a <acks>    Required acks (producer): "
 			"-1, 0, 1, >1\n"
-			"  -B <size>    Consume batch size (# of msgs)\n"
+			"  -B* <size>    Consume batch size (# of msgs)\n"
 			"  -z <codec>   Enable compression:\n"
 			"               none|gzip|snappy\n"
-			"  -o <offset>  Start offset (consumer)\n"
+			"  -o* <offset>  Start offset (consumer)\n"
 			"               beginning, end, NNNNN or -NNNNN\n"
-			"  -d [facs..]  Enable debugging contexts:\n"
+			"  -d* [facs..]  Enable debugging contexts:\n"
 			"               %s\n"
-			"  -X <prop=name> Set arbitrary librdkafka "
+			"  -X* <prop=name> Set arbitrary librdkafka "
 			"configuration property\n"
 			"               Properties prefixed with \"topic.\" "
 			"will be set on topic object.\n"
 			"               Use '-X list' to see the full list\n"
 			"               of supported properties.\n"
                         "  -X file=<path> Read config from file.\n"
-			"  -T <intvl>   Enable statistics from librdkafka at "
+			"  -T* <intvl>   Enable statistics from librdkafka at "
 			"specified interval (ms)\n"
-                        "  -Y <command> Pipe statistics to <command>\n"
+			"  -Y* <command> Pipe statistics to <command>\n"
 			"  -I           Idle: dont produce any messages\n"
 			"  -q           Decrease verbosity\n"
                         "  -v           Increase verbosity (default 1)\n"
                         "  -u           Output stats in table format\n"
-                        "  -r <rate>    Producer msg/s limit\n"
-                        "  -l           Latency measurement.\n"
+                        "  -r* <rate>    Producer msg/s limit\n"
+                        "  -l*           Latency measurement.\n"
                         "               Needs two matching instances, one\n"
                         "               consumer and one producer, both\n"
                         "               running with the -l switch.\n"
-                        "  -l           Producer: per-message latency stats\n"
-			"  -A <file>    Write per-message latency stats to "
+                        "  -l*           Producer: per-message latency stats\n"
+			"  -A* <file>    Write per-message latency stats to "
 			"<file>. Requires -l\n"
                         "  -O           Report produced offset (producer)\n"
 			"  -N           No delivery reports (producer)\n"
