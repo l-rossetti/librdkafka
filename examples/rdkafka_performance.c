@@ -117,7 +117,7 @@ static struct {
         rd_ts_t  latency_sum;
         int      latency_cnt;
         int64_t  last_offset;
-} cnt;
+} statistics;
 
 
 uint64_t wall_clock (void) {
@@ -168,16 +168,16 @@ static void msg_delivered (rd_kafka_t *rk,
 	msgs_wait_cnt--;
 
 	if (rkmessage->err)
-                cnt.msgs_dr_err++;
+                statistics.msgs_dr_err++;
         else {
-                cnt.msgs_dr_ok++;
-                cnt.bytes_dr_ok += rkmessage->len;
+                statistics.msgs_dr_ok++;
+                statistics.bytes_dr_ok += rkmessage->len;
         }
 
 
 	if ((rkmessage->err &&
-	     (cnt.msgs_dr_err < 50 ||
-              !(cnt.msgs_dr_err % (dispintvl / 1000)))) ||
+	     (statistics.msgs_dr_err < 50 ||
+              !(statistics.msgs_dr_err % (dispintvl / 1000)))) ||
 	    !last || msgs_wait_cnt < 5 ||
 	    !(msgs_wait_cnt % dr_disp_div) ||
 	    (now - last) >= dispintvl * 1000 ||
@@ -198,7 +198,7 @@ static void msg_delivered (rd_kafka_t *rk,
 	}
 
         if (report_offset)
-                cnt.last_offset = rkmessage->offset;
+                statistics.last_offset = rkmessage->offset;
 
 	if (msgs_wait_produce_cnt == 0 && msgs_wait_cnt == 0 && !forever) {
 		if (verbosity >= 2)
@@ -314,17 +314,17 @@ static void print_stats (rd_kafka_t *rk,
 
 	if (!(otype & _OTYPE_FORCE) &&
             (((otype & _OTYPE_SUMMARY) && verbosity == 0) ||
-             cnt.t_last + dispintvl > now))
+             statistics.t_last + dispintvl > now))
 		return;
 
         print_header = !rows_written ||(verbosity > 0 && !(rows_written % 20));
 
-	if (cnt.t_end_send)
-		t_total = cnt.t_end_send - cnt.t_start;
-	else if (cnt.t_end)
-		t_total = cnt.t_end - cnt.t_start;
-	else if (cnt.t_start)
-		t_total = now - cnt.t_start;
+	if (statistics.t_end_send)
+		t_total = statistics.t_end_send - statistics.t_start;
+	else if (statistics.t_end)
+		t_total = statistics.t_end - statistics.t_start;
+	else if (statistics.t_start)
+		t_total = now - statistics.t_start;
 	else
 		t_total = 1;
 
@@ -360,20 +360,20 @@ static void print_stats (rd_kafka_t *rk,
 
                         ROW_START();
                         COL_PR64("elapsed", t_total / 1000);
-                        COL_PR64("msgs", cnt.msgs);
-                        COL_PR64("bytes", cnt.bytes);
-                        COL_PR64("rtt", cnt.avg_rtt / 1000);
-                        COL_PR64("dr", cnt.msgs_dr_ok);
+                        COL_PR64("msgs", statistics.msgs);
+                        COL_PR64("bytes", statistics.bytes);
+                        COL_PR64("rtt", statistics.avg_rtt / 1000);
+                        COL_PR64("dr", statistics.msgs_dr_ok);
                         COL_PR64("dr_m/s",
-                                 ((cnt.msgs_dr_ok * 1000000) / t_total));
+                                 ((statistics.msgs_dr_ok * 1000000) / t_total));
                         COL_PRF("dr_MB/s",
-                                (float)((cnt.bytes_dr_ok) / (float)t_total));
-                        COL_PR64("dr_err", cnt.msgs_dr_err);
-                        COL_PR64("tx_err", cnt.tx_err);
+                                (float)((statistics.bytes_dr_ok) / (float)t_total));
+                        COL_PR64("dr_err", statistics.msgs_dr_err);
+                        COL_PR64("tx_err", statistics.tx_err);
                         COL_PR64("outq",
                                  rk ? (uint64_t)rd_kafka_outq_len(rk) : 0);
                         if (report_offset)
-                                COL_PR64("offset", (uint64_t)cnt.last_offset);
+                                COL_PR64("offset", (uint64_t)statistics.last_offset);
                         ROW_END();
                 }
 
@@ -386,12 +386,12 @@ static void print_stats (rd_kafka_t *rk,
                                "%.02f MB/s, "
                                "%"PRIu64" produce failures, %i in queue, "
                                "%s compression\n",
-                               cnt.msgs, cnt.bytes,
-                               cnt.msgs_dr_ok, cnt.last_offset, cnt.msgs_dr_err,
+                               statistics.msgs, statistics.bytes,
+                               statistics.msgs_dr_ok, statistics.last_offset, statistics.msgs_dr_err,
                                t_total / 1000,
-                               ((cnt.msgs_dr_ok * 1000000) / t_total),
-                               (float)((cnt.bytes_dr_ok) / (float)t_total),
-                               cnt.tx_err,
+                               ((statistics.msgs_dr_ok * 1000000) / t_total),
+                               (float)((statistics.bytes_dr_ok) / (float)t_total),
+                               statistics.tx_err,
                                rk ? rd_kafka_outq_len(rk) : 0,
                                compression);
                 }
@@ -416,15 +416,15 @@ static void print_stats (rd_kafka_t *rk,
 
                         ROW_START();
                         COL_PR64("elapsed", t_total / 1000);
-                        COL_PR64("msgs", cnt.msgs);
-                        COL_PR64("bytes", cnt.bytes);
-                        COL_PR64("rtt", cnt.avg_rtt / 1000);
+                        COL_PR64("msgs", statistics.msgs);
+                        COL_PR64("bytes", statistics.bytes);
+                        COL_PR64("rtt", statistics.avg_rtt / 1000);
                         COL_PR64("m/s",
-                                 ((cnt.msgs * 1000000) / t_total));
+                                 ((statistics.msgs * 1000000) / t_total));
                         COL_PRF("MB/s",
-                                (float)((cnt.bytes) / (float)t_total));
-                        COL_PR64("rx_err", cnt.msgs_dr_err);
-                        COL_PR64("offset", cnt.offset);
+                                (float)((statistics.bytes) / (float)t_total));
+                        COL_PR64("rx_err", statistics.msgs_dr_err);
+                        COL_PR64("offset", statistics.offset);
 
                         ROW_END();
 
@@ -437,26 +437,26 @@ static void print_stats (rd_kafka_t *rk,
                                                      ", latency "
                                                      "curr/avg/lo/hi "
                                                      "%.2f/%.2f/%.2f/%.2fms",
-                                                     cnt.latency_last / 1000.0f,
+                                                     statistics.latency_last / 1000.0f,
                                                      latency_avg  / 1000.0f,
-                                                     cnt.latency_lo / 1000.0f,
-                                                     cnt.latency_hi / 1000.0f)
+                                                     statistics.latency_lo / 1000.0f,
+                                                     statistics.latency_hi / 1000.0f)
 ;
                         printf("%% %"PRIu64" messages (%"PRIu64" bytes) "
                                "consumed in %"PRIu64"ms: %"PRIu64" msgs/s "
                                "(%.02f MB/s)"
                                "%s\n",
-                               cnt.msgs, cnt.bytes,
+                               statistics.msgs, statistics.bytes,
                                t_total / 1000,
-                               ((cnt.msgs * 1000000) / t_total),
-                               (float)((cnt.bytes) / (float)t_total),
+                               ((statistics.msgs * 1000000) / t_total),
+                               (float)((statistics.bytes) / (float)t_total),
                                extra);
                 }
 
-                if (incremental_mode && now > cnt.t_last) {
-                        uint64_t i_msgs = cnt.msgs - cnt.msgs_last;
-                        uint64_t i_bytes = cnt.bytes - cnt.bytes_last;
-                        uint64_t i_time = cnt.t_last ? now - cnt.t_last : 0;
+                if (incremental_mode && now > statistics.t_last) {
+                        uint64_t i_msgs = statistics.msgs - statistics.msgs_last;
+                        uint64_t i_bytes = statistics.bytes - statistics.bytes_last;
+                        uint64_t i_time = statistics.t_last ? now - statistics.t_last : 0;
 
                         printf("%% INTERVAL: %"PRIu64" messages "
                                "(%"PRIu64" bytes) "
@@ -472,9 +472,9 @@ static void print_stats (rd_kafka_t *rk,
                 }
         }
 
-	cnt.t_last = now;
-	cnt.msgs_last = cnt.msgs;
-	cnt.bytes_last = cnt.bytes;
+	statistics.t_last = now;
+	statistics.msgs_last = statistics.msgs;
+	statistics.bytes_last = statistics.bytes;
 }
 
 
@@ -896,11 +896,11 @@ int main (int argc, char **argv) {
                 if (dr_disp_div == 0)
                         dr_disp_div = 10;
 
-		cnt.t_start = cnt.t_last = rd_clock();
+		statistics.t_start = statistics.t_last = rd_clock();
 
 		msgs_wait_produce_cnt = msgcnt;
 
-		while (run && (msgcnt == -1 || (int)cnt.msgs < msgcnt)) {
+		while (run && (msgcnt == -1 || (int)statistics.msgs < msgcnt)) {
 			/* Send/Produce message. */
 
 			if (idle) {
@@ -918,7 +918,7 @@ int main (int argc, char **argv) {
 			if (msgsize == 0){
 					pbuf = NULL;
 			}
-			cnt.tx++;
+			statistics.tx++;
 			while (run &&
 			       rd_kafka_produce(rkt, partition,
 						sendflags, pbuf, msgsize,
@@ -934,7 +934,7 @@ int main (int argc, char **argv) {
 						   err == RD_KAFKA_RESP_ERR__QUEUE_FULL ?
 						   " (backpressure)" : "");
 
-				cnt.tx_err++;
+				statistics.tx_err++;
 				if (err != RD_KAFKA_RESP_ERR__QUEUE_FULL) {
 					run = 0;
 					break;
@@ -949,8 +949,8 @@ int main (int argc, char **argv) {
 			msgs_wait_cnt++;
 			if (msgs_wait_produce_cnt != -1)
 				msgs_wait_produce_cnt--;
-			cnt.msgs++;
-			cnt.bytes += msgsize;
+			statistics.msgs++;
+			statistics.bytes += msgsize;
 
 			/* Must poll to handle delivery reports */
 			rd_kafka_poll(rk, 0);
@@ -969,16 +969,16 @@ int main (int argc, char **argv) {
 		outq = rd_kafka_outq_len(rk);
                 if (verbosity >= 2)
                         printf("%% %i messages in outq\n", outq);
-		cnt.msgs -= outq;
-		cnt.bytes -= msgsize * outq;
+		statistics.msgs -= outq;
+		statistics.bytes -= msgsize * outq;
 
-		cnt.t_end = t_end;
+		statistics.t_end = t_end;
 
-		if (cnt.tx_err > 0)
+		if (statistics.tx_err > 0)
 			printf("%% %"PRIu64" backpressures for %"PRIu64
 			       " produce calls: %.3f%% backpressure rate\n",
-			       cnt.tx_err, cnt.tx,
-			       ((double)cnt.tx_err / (double)cnt.tx) * 100.0);
+			       statistics.tx_err, statistics.tx,
+			       ((double)statistics.tx_err / (double)statistics.tx) * 100.0);
 
 		/* Destroy topic */
 		rd_kafka_topic_destroy(rkt);
@@ -989,15 +989,15 @@ int main (int argc, char **argv) {
 
 		free(sbuf);
 
-                exitcode = cnt.msgs == cnt.msgs_dr_ok ? 0 : 1;
+                exitcode = statistics.msgs == statistics.msgs_dr_ok ? 0 : 1;
 
 	}
 
 	print_stats(NULL, mode, otype|_OTYPE_FORCE, compression);
 
-	if (cnt.t_fetch_latency && cnt.msgs)
+	if (statistics.t_fetch_latency && statistics.msgs)
 		printf("%% Average application fetch latency: %"PRIu64"us\n",
-		       cnt.t_fetch_latency / cnt.msgs);
+		       statistics.t_fetch_latency / statistics.msgs);
 
 	if (latency_fp)
 		fclose(latency_fp);
